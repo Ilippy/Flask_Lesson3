@@ -1,7 +1,7 @@
 from sqlalchemy.exc import OperationalError
-from flask import Flask, render_template, request
-from models import db, Student, Faculty, Author, Book, Grade, UserT4, UserT5
-from forms import RegFormT4, RegFormT5
+from flask import Flask, render_template, redirect, url_for, flash
+from models import db, Student, Faculty, Author, Book, Grade, UserT4, UserT5, UserT7
+from forms import RegFormT4, RegFormT5, RegFormT7, LoginFormT7
 
 import random
 
@@ -174,9 +174,6 @@ def task4_registration():
 @app.route('/task5/registration', methods=['GET', 'POST'])
 def task5_registration():
     form = RegFormT5()
-    print(form.validate(), form.is_submitted, sep='\n')
-    if request.method == 'POST':
-        print(form.birth_date.data)
     if form.validate_on_submit():
         name = form.name.data
         email = form.email.data
@@ -192,6 +189,61 @@ def task5_registration():
         db.session.commit()
         return result(f'{name}, Добро пожаловать')
     return render_template('task5/registration.html', form=form, title='task5')
+
+
+# Создайте форму регистрации пользователей в приложении Flask.
+# Форма должна содержать поля: имя, фамилия, email, пароль и подтверждение пароля.
+# При отправке формы данные должны валидироваться на следующие условия:
+# ○ Все поля обязательны для заполнения.
+# ○ Поле email должно быть валидным email адресом.
+# ○ Поле пароль должно быть зашифровано,
+# а так же содержать не менее 8 символов, включая хотя бы одну букву и одну цифру.
+# ○ Поле подтверждения пароля должно совпадать с полем пароля.
+# ○ Если данные формы не прошли валидацию, на странице должна быть выведена соответствующая ошибка.
+# ○ Если данные формы прошли валидацию, на странице должно быть выведено сообщение об успешной регистрации.
+@app.route('/task7/registration', methods=['GET', 'POST'])
+@app.route('/task7/', methods=['GET', 'POST'])
+def task7_registration():
+    form = RegFormT7()
+    if form.validate_on_submit():
+        is_error = False
+        first_name = form.first_name.data
+        last_name = form.last_name.data
+        email = form.email.data
+        password: str = form.password.data
+        if UserT7.query.filter_by(email=email).first():
+            is_error = True
+            form.email.errors.append('Эта почта уже зарегистрирована!')
+        if not any(char.isdigit() for char in password):
+            is_error = True
+            form.password.errors.append('В пароле должна быть хоть 1 цифра!')
+        if not any(char.isupper() for char in password):
+            is_error = True
+            form.password.errors.append('В пароле должна быть хоть 1 заглавная буква!')
+        if not is_error:
+            new_user = UserT7(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                password=password
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for('task7_login'))
+    return render_template('task7/registration.html', form=form, title='task7')
+
+
+@app.route('/task7/login', methods=['GET', 'POST'])
+def task7_login():
+    form = LoginFormT7()
+    if form.validate_on_submit():
+        email = form.email.data
+        password = form.password.data
+        user = UserT7.query.filter_by(email=email).first()
+        if user and user.verify_password(password):
+            return result("Добро пожаловать!")
+        flash('Почта и/или пароль не подошли.', 'danger')
+    return render_template('task7/login.html', form=form, title='task7')
 
 
 @app.errorhandler(404)
