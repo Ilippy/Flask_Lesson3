@@ -1,5 +1,8 @@
-from flask import Flask, render_template, flash
-from models import db, Student, Faculty, Author, Book
+from sqlalchemy.exc import OperationalError
+from flask import Flask, render_template, request
+from models import db, Student, Faculty, Author, Book, Grade, UserT4, UserT5
+from forms import RegFormT4, RegFormT5
+
 import random
 
 app = Flask(__name__)
@@ -15,8 +18,8 @@ def init_db():
     print('OK')
 
 
-@app.cli.command('fill-t1')
-def fill_task1_tables():
+@app.cli.command('fill-db')
+def fill_db_tables():
     for i in range(1, 6):
         new_faculty = Faculty(name=f"Faculty_{i}")
         db.session.add(new_faculty)
@@ -34,11 +37,16 @@ def fill_task1_tables():
         )
         db.session.add(new_student)
     db.session.commit()
-    print("OK")
 
+    for i in range(50):
+        new_grade = Grade(
+            subject=f"Предмет {random.randint(1, 5)}",
+            grade=random.randint(1, 5),
+            student_id=i % 10 + 1
+        )
+        db.session.add(new_grade)
+    db.session.commit()
 
-@app.cli.command('fill-t2')
-def fill_task2_tables():
     for i in range(1, 6):
         new_author = Author(
             first_name=f"Имя {i}",
@@ -79,7 +87,7 @@ def result(message):
 def task1_index():
     try:
         students = Student.query.all()
-    except:
+    except OperationalError:
         students = None
     return render_template('task1/index.html', students=students, title="task1")
 
@@ -96,7 +104,7 @@ def task1_index():
 def task2_index():
     try:
         books = Book.query.all()
-    except:
+    except OperationalError:
         books = None
     return render_template('task2/index.html', books=books, title='task2')
 
@@ -108,6 +116,82 @@ def task2_index():
 # В таблице "Оценки" должны быть следующие поля: id, id студента, название предмета и оценка.
 # Необходимо создать связь между таблицами "Студенты" и "Оценки".
 # Написать функцию-обработчик, которая будет выводить список всех студентов с указанием их оценок.
+@app.route('/task3/')
+def task3_index():
+    try:
+        grades = Grade.query.join(Student).order_by(Grade.subject, Student.first_name, Student.last_name).all()
+    except OperationalError:
+        grades = None
+    return render_template('task3/index.html', grades=grades, title='task3')
+
+
+# Создайте форму регистрации пользователя с использованием Flask-WTF.
+# Форма должна содержать следующие поля:
+# Имя пользователя (обязательное поле)
+# Электронная почта (обязательное поле, с валидацией на корректность ввода email)
+# Пароль (обязательное поле, с валидацией на минимальную длину пароля)
+# Подтверждение пароля (обязательное поле, с валидацией на совпадение с паролем)
+# После отправки формы данные должны сохраняться в базе данных (можно использовать SQLite)
+# и выводиться сообщение об успешной регистрации.
+# Если какое-то из обязательных полей не заполнено или данные не прошли валидацию,
+# то должно выводиться соответствующее сообщение об ошибке.
+# Дополнительно: добавьте проверку на уникальность имени пользователя и электронной почты в базе данных.
+# Если такой пользователь уже зарегистрирован, то должно выводиться сообщение об ошибке.
+@app.route('/task4/', methods=['GET', 'POST'])
+@app.route('/task4/registration', methods=['GET', 'POST'])
+def task4_registration():
+    form = RegFormT4()
+    if form.validate_on_submit():
+        is_errors = False
+        name = form.name.data
+        email = form.email.data
+        password = form.password.data
+        if UserT4.query.filter_by(name=name).first():
+            form.name.errors.append("Такое Имя уже присутствует! Выберите другое.")
+            is_errors = True
+        if UserT4.query.filter_by(email=email).first():
+            form.email.errors.append("Такая Почта уже присутствует! Выберите другую.")
+            is_errors = True
+        if not is_errors:
+            new_user = UserT4(
+                name=name,
+                email=email,
+                password=password
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            return result(f"{name}, Добро пожаловать!")
+    return render_template('task4/registration.html', form=form, title='task4')
+
+
+# Создать форму регистрации для пользователя.
+# Форма должна содержать поля:
+# имя, электронная почта,пароль (с подтверждением), дата рождения, согласие на обработку персональных данных.
+# Валидация должна проверять, что все поля заполнены корректно
+# (например, дата рождения должна быть в формате дд.мм.гггг).
+# При успешной регистрации пользователь должен быть перенаправлен на страницу подтверждения регистрации.
+@app.route('/task5/', methods=['GET', 'POST'])
+@app.route('/task5/registration', methods=['GET', 'POST'])
+def task5_registration():
+    form = RegFormT5()
+    print(form.validate(), form.is_submitted, sep='\n')
+    if request.method == 'POST':
+        print(form.birth_date.data)
+    if form.validate_on_submit():
+        name = form.name.data
+        email = form.email.data
+        password = form.password.data
+        birth_date = form.birth_date.data
+        new_user = UserT5(
+            name=name,
+            email=email,
+            password=password,
+            birth_date=birth_date
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        return result(f'{name}, Добро пожаловать')
+    return render_template('task5/registration.html', form=form, title='task5')
 
 
 @app.errorhandler(404)

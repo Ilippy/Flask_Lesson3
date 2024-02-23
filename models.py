@@ -23,9 +23,19 @@ class Student(db.Model):
     group = db.Column(db.Integer, nullable=False)
     email = db.Column(db.String(50), nullable=False, unique=True)
     faculty_id = db.Column(db.Integer, db.ForeignKey('faculty.id'), nullable=False)
+    grades = db.relationship('Grade', backref='student', lazy=True)
 
     def __repr__(self):
-        return f"Student({self.id}, {self.first_name}, {self.last_name}, {self.age}, {self.gender}, {self.group})"
+        return f"Student({self.id}, {self.first_name}, {self.last_name}, " \
+               f"{self.age}, {self.gender}, {self.group} , {self.email})"
+
+
+# В таблице "Оценки" должны быть следующие поля: id, id студента, название предмета и оценка.
+class Grade(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(30), nullable=False)
+    grade = db.Column(db.Integer, nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
 
 
 # В таблице "Авторы" должны быть следующие поля: id, имя и фамилия.
@@ -44,3 +54,23 @@ class Book(db.Model):
     year = db.Column(db.Integer, nullable=False)
     count = db.Column(db.Integer, nullable=False, default=1)
     author_id = db.Column(db.Integer, db.ForeignKey('author.id'), nullable=False)
+
+
+# id
+# Имя пользователя (обязательное поле)
+# Электронная почта (обязательное поле, с валидацией на корректность ввода email)
+# Пароль (обязательное поле, с валидацией на минимальную длину пароля)
+class UserT4(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False, unique=True)
+    email = db.Column(db.String(50), nullable=False, unique=True)
+    password = db.Column(db.String(50), nullable=False)
+
+
+# id, имя, электронная почта, пароль, дата рождения
+class UserT5(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(50), nullable=False)
+    password = db.Column(db.String(50), nullable=False)
+    birth_date = db.Column(db.Date, nullable=False)
